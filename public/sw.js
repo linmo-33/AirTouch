@@ -1,5 +1,5 @@
 // AirTouch Service Worker
-const CACHE_NAME = 'airtouch-v1.0.0';
+const CACHE_NAME = 'airtouch-v1.1.0'; // 更新版本号强制刷新缓存
 const urlsToCache = [
     '/',
     '/index.html',
@@ -10,6 +10,9 @@ const urlsToCache = [
 
 // 安装 Service Worker
 self.addEventListener('install', (event) => {
+    // 跳过等待，立即激活新的 Service Worker
+    self.skipWaiting();
+
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
@@ -31,37 +34,55 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
+        }).then(() => {
+            // 立即接管所有页面
+            return self.clients.claim();
         })
     );
 });
 
-// 拦截请求
+// 拦截请求 - 使用 Network First 策略
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                // 缓存命中，返回缓存
-                if (response) {
-                    return response;
-                }
+    const { request } = event;
+    const url = new URL(request.url);
 
-                // 否则发起网络请求
-                return fetch(event.request).then((response) => {
-                    // 检查是否是有效响应
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
-                        return response;
-                    }
-
-                    // 克隆响应
-                    const responseToCache = response.clone();
-
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            cache.put(event.request, responseToCache);
+    // 对于 HTML 和 JS 文件，优先使用网络（Network First）
+    if (request.method === 'GET' &&
+        (url.pathname.endsWith('.html') ||
+            url.pathname.endsWith('.js') ||
+            url.pathname === '/')) {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
+                    // 网络请求成功，更新缓存
+                    if (response && response.status === 200) {
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(request, responseToCache);
                         });
-
+                    }
                     return response;
-                });
-            })
-    );
+                })
+                .catch(() => {
+                    // 网络失败，返回缓存
+                    return caches.match(request);
+                })
+        );
+    } else {
+        // 其他资源使用 Cache First
+        event.respondWith(
+            caches.match(request)
+                .then((response) => {
+                    return response || fetch(request).then((response) => {
+                        if (response && response.status === 200) {
+                            const responseToCache = response.clone();
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(request, responseToCache);
+                            });
+                        }
+                        return response;
+                    });
+                })
+        );
+    }
 });
