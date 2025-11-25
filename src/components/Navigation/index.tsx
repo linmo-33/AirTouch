@@ -1,5 +1,5 @@
+import { Keyboard as KeyboardIcon, MousePointer2 } from 'lucide-react';
 import React from 'react';
-import { MousePointer2, Keyboard as KeyboardIcon, Sparkles } from 'lucide-react';
 import { ControlMode } from '../../types';
 
 interface NavigationProps {
@@ -24,14 +24,6 @@ const Navigation: React.FC<NavigationProps> = ({ mode, onModeChange }) => {
       >
         <KeyboardIcon className="w-6 h-6" />
         <span className="text-[10px] font-bold tracking-wider">键盘</span>
-      </button>
-
-      <button 
-        onClick={() => onModeChange(ControlMode.AI_COMMAND)}
-        className={`flex flex-col items-center gap-1 transition-colors ${mode === ControlMode.AI_COMMAND ? 'text-purple-400' : 'text-gray-600 hover:text-gray-400'}`}
-      >
-        <Sparkles className="w-6 h-6" />
-        <span className="text-[10px] font-bold tracking-wider">AI 控制</span>
       </button>
     </nav>
   );

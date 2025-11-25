@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import AICommandPanel from './components/AICommandPanel';
 import ConnectionModal from './components/ConnectionModal';
 import Header from './components/Header';
 import KeyboardControl from './components/KeyboardControl';
@@ -28,8 +27,7 @@ const App: React.FC = () => {
     handleScroll,
     handleType,
     handleKeyDown,
-    handleText,
-    handleAIMacro
+    handleText
   } = useController();
 
   return (
@@ -65,9 +63,6 @@ const App: React.FC = () => {
               onKeyDown={handleKeyDown}
               onText={handleText}
             />
-          )}
-          {mode === ControlMode.AI_COMMAND && (
-            <AICommandPanel onExecuteMacro={handleAIMacro} />
           )}
         </div>
       </main>

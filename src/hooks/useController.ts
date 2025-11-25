@@ -1,7 +1,5 @@
-import { MACRO_DELAY } from '../constants';
 import { websocketService } from '../services';
 import { MouseButton, MouseData } from '../types';
-import { delay } from '../utils';
 
 export const useController = () => {
     const handleMouseMove = (data: MouseData) => {
@@ -28,20 +26,12 @@ export const useController = () => {
         websocketService.sendText(text);
     };
 
-    const handleAIMacro = async (macros: string[]) => {
-        for (const macro of macros) {
-            await delay(MACRO_DELAY);
-            handleText(macro);
-        }
-    };
-
     return {
         handleMouseMove,
         handleMouseClick,
         handleScroll,
         handleType,
         handleKeyDown,
-        handleText,
-        handleAIMacro
+        handleText
     };
 };

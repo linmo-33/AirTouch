@@ -1,9 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-    readonly VITE_API_KEY?: string
-    readonly GEMINI_API_KEY?: string
-    // 添加更多环境变量...
+    // 添加环境变量类型定义...
 }
 
 interface ImportMeta {

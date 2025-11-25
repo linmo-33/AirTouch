@@ -1,7 +1,6 @@
 export enum ControlMode {
     TRACKPAD = 'TRACKPAD',
-    KEYBOARD = 'KEYBOARD',
-    AI_COMMAND = 'AI_COMMAND'
+    KEYBOARD = 'KEYBOARD'
 }
 
 export interface MouseData {
@@ -19,7 +18,4 @@ export enum MouseButton {
     MIDDLE = 'MIDDLE'
 }
 
-export interface AICommandResponse {
-    actionDescription: string;
-    macros: string[];
-}
+
