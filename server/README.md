@@ -1,162 +1,105 @@
-# AirTouch PC 服务器
+# AirTouch PC Controller
 
-Python WebSocket 服务器，用于从移动端应用控制你的电脑。
+一个简单易用的 PC 远程控制服务器，支持通过手机控制电脑的鼠标、键盘等操作。
 
-## ✨ 功能特性
+## 功能特点
 
-- 🌐 自动检测并显示所有可用 IP 地址
-- 📱 二维码快速连接（可选）
-- 🎨 美化的终端输出
-- 📊 实时状态显示（连接数、命令统计）
-- 📝 完善的日志系统
-- ⚙️ 配置文件支持
-- 🔒 连接数限制
+- 🖱️ 鼠标控制（移动、点击、滚动）
+- ⌨️ 键盘输入（文本输入、功能键）
+- 📱 二维码扫描连接
+- 🚀 低延迟二进制协议
+- 🎨 简洁的 GUI 界面
+- 📦 支持打包成独立 exe
 
-## 📦 安装
+## 快速开始
 
-### 1. 安装 Python
+### 方式一：使用打包好的 exe（推荐）
 
-确保已安装 Python 3.8 或更高版本：
-```bash
-python --version
-```
+1. 双击运行 `AirTouch.exe`
+2. 点击"启动服务器"
+3. 使用手机扫描二维码连接
 
-### 2. 安装依赖
+### 方式二：从源码运行
 
 ```bash
-cd server
+# 安装依赖
 pip install -r requirements.txt
-```
 
-依赖包：
-- `websockets` - WebSocket 服务器
-- `pyautogui` - 控制鼠标和键盘
-- `rich` - 美化终端输出
-- `qrcode` - 生成二维码（可选）
-
-## 🚀 使用方法
-
-### 启动服务器
-
-```bash
+# 运行程序
 python pc_controller.py
 ```
 
-服务器会自动：
-1. 显示 AirTouch Logo
-2. 检测并显示所有可用 IP 地址
-3. 生成二维码（如果启用）
-4. 实时显示连接状态
+## 打包说明
 
-### 连接到服务器
+### Windows 系统
 
-1. 在手机浏览器打开 AirTouch 应用
-2. 输入服务器显示的 IP 地址
-3. 或扫描二维码快速连接
+```bash
+# 安装打包依赖
+pip install -r requirements-dev.txt
 
-## ⚙️ 配置
+# 执行打包（方式1：使用脚本）
+build.bat
 
-编辑 `config.json` 文件：
-
-```json
-{
-  "server": {
-    "host": "0.0.0.0",    // 监听地址
-    "port": 8765          // 监听端口
-  },
-  "security": {
-    "password": "",       // 连接密码（暂未实现）
-    "max_connections": 5  // 最大连接数
-  },
-  "logging": {
-    "level": "INFO",      // 日志级别
-    "file": "logs/airtouch.log"
-  },
-  "features": {
-    "show_qrcode": true,  // 显示二维码
-    "auto_start": false   // 开机自启动（暂未实现）
-  }
-}
+# 执行打包（方式2：手动命令）
+pyinstaller --onefile --windowed --name "AirTouch" pc_controller.py
 ```
 
-## 📊 支持的命令
+打包完成后，exe 文件位于 `dist/AirTouch.exe`
 
-- 🖱️ 鼠标移动
-- 👆 鼠标点击（左键、右键、中键）
-- 📜 滚动
-- ⌨️ 键盘输入
-- 🔑 特殊按键（Enter、Backspace、Esc 等）
+## 使用说明
 
-## 📝 日志
+1. **启动服务器**
 
-日志文件位置：`logs/airtouch.log`
+   - 运行程序后点击"启动服务器"按钮
+   - 查看显示的 IP 地址和二维码
 
-日志级别：
-- `DEBUG` - 详细调试信息
-- `INFO` - 一般信息
-- `WARNING` - 警告信息
-- `ERROR` - 错误信息
+2. **手机连接**
 
-## 🔧 故障排除
+   - 确保手机和电脑在同一局域网
+   - 使用手机扫描二维码或手动输入 IP 地址
+   - 连接成功后即可控制电脑
 
-### 无法启动服务器
+3. **功能使用**
+   - 触摸板：控制鼠标移动
+   - 点击：单击、右键、双击
+   - 滚动：上下滚动页面
+   - 键盘：输入文本和功能键
 
-1. 检查端口是否被占用：
-   ```bash
-   # Windows
-   netstat -ano | findstr :8765
-   
-   # Mac/Linux
-   lsof -i :8765
-   ```
+## 技术栈
 
-2. 尝试更改端口（编辑 `config.json`）
+- Python 3.8+
+- tkinter (GUI 界面)
+- websockets (通信协议)
+- pyautogui (系统控制)
+- qrcode (二维码生成)
+
+## 注意事项
+
+- 默认端口：8765
+- 仅支持一个客户端同时连接
+- 首次运行可能需要允许防火墙访问
+- 确保手机和电脑在同一局域网内
+
+## 故障排除
 
 ### 无法连接
 
-1. 确保手机和电脑在同一 WiFi 网络
-2. 检查防火墙设置，允许端口 8765
-3. 确认 IP 地址正确
+- 检查防火墙设置，允许端口 8765
+- 确认手机和电脑在同一 WiFi 网络
+- 尝试关闭 VPN 或代理
 
-### 控制不响应
+### 打包失败
 
-1. 检查 PyAutoGUI 是否正常工作
-2. 查看日志文件了解详细错误
-3. 确保没有其他程序干扰
+- 确保 Python 版本 >= 3.8
+- 升级 pyinstaller: `pip install --upgrade pyinstaller`
+- 检查是否有杀毒软件拦截
 
-## 🔒 安全提示
+### 运行错误
 
-- ⚠️ 仅在可信任的局域网使用
-- ⚠️ 不要将服务器暴露到公网
-- ⚠️ 建议设置防火墙规则
-- ⚠️ 定期检查日志文件
+- 查看日志区域的错误信息
+- 确保端口 8765 未被占用
+- 重启程序或电脑
 
-## 🛠️ 开发
+## 许可证
 
-### 添加新功能
-
-1. 在 `process_command` 方法中添加新的命令类型
-2. 在前端添加对应的发送逻辑
-3. 更新文档
-
-### 调试模式
-
-设置日志级别为 `DEBUG`：
-```json
-{
-  "logging": {
-    "level": "DEBUG"
-  }
-}
-```
-
-## 📚 相关链接
-
-- [AirTouch 主项目](../)
-- [PyAutoGUI 文档](https://pyautogui.readthedocs.io/)
-- [Websockets 文档](https://websockets.readthedocs.io/)
-
----
-
-**AirTouch - 隔空触控**
-让你的手机变成智能触控板 🚀
+MIT License

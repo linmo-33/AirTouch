@@ -1,0 +1,33 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#030712;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1f2937;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  
+  <!-- 简化的触控板图标 -->
+  <g transform="translate(512, 512)">
+    <!-- 触控板外框 -->
+    <rect x="-280" y="-280" width="560" height="560" rx="60" 
+          fill="none" stroke="#374151" stroke-width="40" opacity="0.9"/>
+    
+    <!-- 手指触摸点 -->
+    <circle cx="-80" cy="-80" r="60" fill="#00f3ff" opacity="0.95"/>
+    
+    <!-- 触摸轨迹 -->
+    <path d="M -80 -80 Q 0 0, 120 120" 
+          fill="none" stroke="#00f3ff" stroke-width="30" 
+          stroke-linecap="round" opacity="0.7"/>
+    
+    <!-- 终点 -->
+    <circle cx="120" cy="120" r="40" fill="#00f3ff" opacity="0.8"/>
+    
+    <!-- 波纹效果 -->
+    <circle cx="120" cy="120" r="80" fill="none" stroke="#00f3ff" stroke-width="6" opacity="0.4"/>
+    <circle cx="120" cy="120" r="110" fill="none" stroke="#00f3ff" stroke-width="4" opacity="0.2"/>
+  </g>
+</svg>
