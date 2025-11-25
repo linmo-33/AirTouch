@@ -8,8 +8,8 @@ node_modules/
 
 # Editor
 .vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
+.vscode/settings.json
+.vscode/extensions.json
 .idea/
 *.swp
 *.swo
@@ -36,8 +36,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea
 .DS_Store
 *.suo
