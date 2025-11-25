@@ -88,7 +88,30 @@ class PCController:
                 
             elif cmd_type == 'scroll':
                 dy = data.get('dy', 0)
-                pyautogui.scroll(int(dy))
+                # 处理特殊手势命令
+                if dy == 999:
+                    # 三指下滑：显示桌面 (Win+D)
+                    pyautogui.hotkey('win', 'd')
+                    if ENABLE_LOGGING:
+                        print('🖐️ 三指下滑：显示桌面')
+                elif dy == -999:
+                    # 三指上滑：任务视图 (Win+Tab)
+                    pyautogui.hotkey('win', 'tab')
+                    if ENABLE_LOGGING:
+                        print('🖐️ 三指上滑：任务视图')
+                elif dy == 888:
+                    # 三指右滑：下一个任务 (Alt+Tab)
+                    pyautogui.hotkey('alt', 'tab')
+                    if ENABLE_LOGGING:
+                        print('🖐️ 三指右滑：切换任务')
+                elif dy == -888:
+                    # 三指左滑：上一个任务 (Alt+Shift+Tab)
+                    pyautogui.hotkey('alt', 'shift', 'tab')
+                    if ENABLE_LOGGING:
+                        print('🖐️ 三指左滑：切换任务')
+                else:
+                    # 普通滚动
+                    pyautogui.scroll(int(dy))
                 
             elif cmd_type == 'keydown':
                 # 物理按键模拟（功能键、快捷键）
