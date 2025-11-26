@@ -2,11 +2,13 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { DebugPanel } from './src/components/DebugPanel';
 import { KeyboardControl } from './src/components/KeyboardControl';
 import { QRScanner } from './src/components/QRScanner';
 import { SplashScreen } from './src/components/SplashScreen';
 import { TouchPad } from './src/components/TouchPad';
 import { websocketService } from './src/services/websocket';
+import { logger } from './src/utils/logger';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 type ControlMode = 'trackpad' | 'keyboard';
@@ -19,14 +21,30 @@ export default function App() {
   const [mode, setMode] = useState<ControlMode>('trackpad');
   const [showSplash, setShowSplash] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugTapCount, setDebugTapCount] = useState(0);
 
   const handleConnect = async () => {
     setErrorMessage('');
+    logger.info(`尝试连接到 ${serverIp}:8765`);
     const success = await websocketService.connect(serverIp, setConnectionState);
     if (success) {
+      logger.info('连接成功');
       setShowInput(false);
     } else {
+      logger.error('连接失败');
       setErrorMessage('连接失败，请检查：\n1. 电脑服务端是否运行\n2. IP地址是否正确\n3. 手机和电脑是否在同一网络');
+    }
+  };
+
+  const handleTitlePress = () => {
+    setDebugTapCount(prev => prev + 1);
+    setTimeout(() => setDebugTapCount(0), 2000);
+
+    if (debugTapCount >= 4) {
+      setShowDebug(true);
+      setDebugTapCount(0);
+      logger.info('调试面板已打开');
     }
   };
 
@@ -59,10 +77,13 @@ export default function App() {
     setShowScanner(false);
     setServerIp(ip);
     setErrorMessage('');
+    logger.info(`通过二维码扫描连接到 ${ip}:8765`);
     const success = await websocketService.connect(ip, setConnectionState);
     if (success) {
+      logger.info('连接成功');
       setShowInput(false);
     } else {
+      logger.error('连接失败');
       setErrorMessage('连接失败，请检查：\n1. 电脑服务端是否运行\n2. IP地址是否正确\n3. 手机和电脑是否在同一网络');
     }
   };
@@ -79,13 +100,18 @@ export default function App() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>AirTouch</Text>
+          <TouchableOpacity onPress={handleTitlePress}>
+            <Text style={styles.title}>AirTouch</Text>
+          </TouchableOpacity>
           {connectionState === 'connected' && (
             <TouchableOpacity onPress={handleDisconnect} style={styles.disconnectBtn}>
               <Text style={styles.disconnectText}>断开</Text>
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Debug Panel */}
+        <DebugPanel visible={showDebug} onClose={() => setShowDebug(false)} />
 
         {/* QR Scanner */}
         {showScanner && (

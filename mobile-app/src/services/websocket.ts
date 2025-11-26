@@ -1,3 +1,5 @@
+import { logger } from "../utils/logger";
+
 type ConnectionState = "disconnected" | "connecting" | "connected" | "error";
 
 class WebSocketService {
@@ -10,18 +12,23 @@ class WebSocketService {
     onStatusChange: (status: ConnectionState) => void
   ): Promise<boolean> {
     this.ip = ip;
+    logger.info(`开始连接 WebSocket: ws://${ip}:8765`);
     onStatusChange("connecting");
 
     try {
       this.socket = new WebSocket(`ws://${this.ip}:8765`);
       this.socket.binaryType = "arraybuffer";
+      logger.debug('WebSocket 实例已创建，等待连接...');
 
       return new Promise((resolve) => {
-        if (!this.socket) return resolve(false);
+        if (!this.socket) {
+          logger.error('WebSocket 实例创建失败');
+          return resolve(false);
+        }
 
         // 设置连接超时
         const timeout = setTimeout(() => {
-          console.log("WebSocket Connection Timeout");
+          logger.error('连接超时（5秒）');
           if (this.socket) {
             this.socket.close();
           }
@@ -31,26 +38,26 @@ class WebSocketService {
 
         this.socket.onopen = () => {
           clearTimeout(timeout);
-          console.log("WebSocket Connected (Binary Protocol)");
+          logger.info('WebSocket 连接成功');
           onStatusChange("connected");
           resolve(true);
         };
 
         this.socket.onerror = (err) => {
           clearTimeout(timeout);
-          console.error("WebSocket Error", err);
+          logger.error(`WebSocket 错误: ${JSON.stringify(err)}`);
           onStatusChange("error");
           resolve(false);
         };
 
-        this.socket.onclose = () => {
+        this.socket.onclose = (event) => {
           clearTimeout(timeout);
-          console.log("WebSocket Closed");
+          logger.warn(`WebSocket 关闭 - Code: ${event.code}, Reason: ${event.reason || '无'}`);
           onStatusChange("disconnected");
         };
       });
     } catch (e) {
-      console.error(e);
+      logger.error(`连接异常: ${e}`);
       onStatusChange("error");
       return false;
     }
@@ -58,6 +65,7 @@ class WebSocketService {
 
   disconnect() {
     if (this.socket) {
+      logger.info('主动断开连接');
       this.socket.close();
     }
     this.socket = null;

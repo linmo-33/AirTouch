@@ -2,7 +2,7 @@
   "expo": {
     "name": "AirTouch",
     "slug": "airtouch",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.airtouch.app",
-      "versionCode": 1,
+      "versionCode": 3,
       "icon": "./assets/icon.png",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -27,14 +27,21 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE"
-      ],
-      "usesCleartextTraffic": true
+      ]
     },
     "plugins": [
       [
         "expo-camera",
         {
           "cameraPermission": "允许 AirTouch 使用相机扫描二维码"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],
