@@ -10,8 +10,11 @@ class Logger {
     private logs: LogEntry[] = [];
     private maxLogs = 100;
     private listeners: Set<(logs: LogEntry[]) => void> = new Set();
+    private enabled = true; // 始终启用，因为日志很轻量
 
     log(level: LogLevel, message: string) {
+        if (!this.enabled) return;
+
         const entry: LogEntry = {
             timestamp: new Date().toLocaleTimeString(),
             level,
@@ -25,11 +28,15 @@ class Logger {
             this.logs.shift();
         }
 
-        // 通知监听器
-        this.listeners.forEach(listener => listener([...this.logs]));
+        // 只在有监听器时通知（避免不必要的数组复制）
+        if (this.listeners.size > 0) {
+            this.listeners.forEach(listener => listener([...this.logs]));
+        }
 
-        // 同时输出到控制台
-        console.log(`[${entry.timestamp}] [${level.toUpperCase()}] ${message}`);
+        // 开发环境输出到控制台
+        if (__DEV__) {
+            console.log(`[${entry.timestamp}] [${level.toUpperCase()}] ${message}`);
+        }
     }
 
     info(message: string) {
@@ -65,3 +72,4 @@ class Logger {
 
 export const logger = new Logger();
 export type { LogEntry, LogLevel };
+
