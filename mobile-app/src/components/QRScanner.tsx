@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface QRScannerProps {
     onScan: (ip: string) => void;
@@ -10,6 +10,26 @@ interface QRScannerProps {
 export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
+    const scanLineAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const animation = Animated.loop(
+            Animated.sequence([
+                Animated.timing(scanLineAnim, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scanLineAnim, {
+                    toValue: 0,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+            ])
+        );
+        animation.start();
+        return () => animation.stop();
+    }, [scanLineAnim]);
 
     if (!permission) {
         return <View style={styles.container} />;
@@ -54,27 +74,56 @@ export const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
                 barcodeScannerSettings={{
                     barcodeTypes: ['qr'],
                 }}
-            >
-                <View style={styles.overlay}>
-                    <View style={styles.topOverlay} />
-                    <View style={styles.middleRow}>
-                        <View style={styles.sideOverlay} />
-                        <View style={styles.scanArea}>
-                            <View style={[styles.corner, styles.topLeft]} />
-                            <View style={[styles.corner, styles.topRight]} />
-                            <View style={[styles.corner, styles.bottomLeft]} />
-                            <View style={[styles.corner, styles.bottomRight]} />
-                        </View>
-                        <View style={styles.sideOverlay} />
-                    </View>
-                    <View style={styles.bottomOverlay}>
-                        <Text style={styles.hint}>对准服务端显示的二维码</Text>
-                        <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                            <Text style={styles.closeText}>取消</Text>
-                        </TouchableOpacity>
-                    </View>
+            />
+            <View style={styles.overlay}>
+                <View style={styles.topOverlay}>
+                    <Text style={styles.title}>扫描二维码</Text>
                 </View>
-            </CameraView>
+                <View style={styles.middleRow}>
+                    <View style={styles.sideOverlay} />
+                    <View style={styles.scanArea}>
+                        {/* 四个角的装饰 */}
+                        <View style={[styles.corner, styles.topLeft]} />
+                        <View style={[styles.corner, styles.topRight]} />
+                        <View style={[styles.corner, styles.bottomLeft]} />
+                        <View style={[styles.corner, styles.bottomRight]} />
+
+                        {/* 扫描线动画 */}
+                        {!scanned && (
+                            <Animated.View
+                                style={[
+                                    styles.scanLine,
+                                    {
+                                        transform: [
+                                            {
+                                                translateY: scanLineAnim.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: [0, 280],
+                                                }),
+                                            },
+                                        ],
+                                    },
+                                ]}
+                            />
+                        )}
+
+                        {/* 扫描成功提示 */}
+                        {scanned && (
+                            <View style={styles.scannedOverlay}>
+                                <Text style={styles.scannedText}>✓</Text>
+                            </View>
+                        )}
+                    </View>
+                    <View style={styles.sideOverlay} />
+                </View>
+                <View style={styles.bottomOverlay}>
+                    <Text style={styles.hint}>对准服务端显示的二维码</Text>
+                    <Text style={styles.subHint}>扫描后将自动连接</Text>
+                    <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                        <Text style={styles.closeText}>取消</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
         </View>
     );
 };
@@ -88,66 +137,111 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     overlay: {
+        ...StyleSheet.absoluteFillObject,
         flex: 1,
     },
     topOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        paddingBottom: 30,
+    },
+    title: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: 'bold',
     },
     middleRow: {
         flexDirection: 'row',
-        height: 250,
+        height: 300,
     },
     sideOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
     },
     scanArea: {
-        width: 250,
-        height: 250,
+        width: 300,
+        height: 300,
         position: 'relative',
+        overflow: 'hidden',
     },
     corner: {
         position: 'absolute',
-        width: 30,
-        height: 30,
+        width: 40,
+        height: 40,
         borderColor: '#00f3ff',
+        borderRadius: 4,
     },
     topLeft: {
-        top: 0,
-        left: 0,
-        borderTopWidth: 3,
-        borderLeftWidth: 3,
+        top: -2,
+        left: -2,
+        borderTopWidth: 4,
+        borderLeftWidth: 4,
+        borderTopLeftRadius: 8,
     },
     topRight: {
-        top: 0,
-        right: 0,
-        borderTopWidth: 3,
-        borderRightWidth: 3,
+        top: -2,
+        right: -2,
+        borderTopWidth: 4,
+        borderRightWidth: 4,
+        borderTopRightRadius: 8,
     },
     bottomLeft: {
-        bottom: 0,
-        left: 0,
-        borderBottomWidth: 3,
-        borderLeftWidth: 3,
+        bottom: -2,
+        left: -2,
+        borderBottomWidth: 4,
+        borderLeftWidth: 4,
+        borderBottomLeftRadius: 8,
     },
     bottomRight: {
-        bottom: 0,
+        bottom: -2,
+        right: -2,
+        borderBottomWidth: 4,
+        borderRightWidth: 4,
+        borderBottomRightRadius: 8,
+    },
+    scanLine: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
         right: 0,
-        borderBottomWidth: 3,
-        borderRightWidth: 3,
+        height: 2,
+        backgroundColor: '#00f3ff',
+        shadowColor: '#00f3ff',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+    },
+    scannedOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 243, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    scannedText: {
+        color: '#00f3ff',
+        fontSize: 80,
+        fontWeight: 'bold',
     },
     bottomOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
         paddingBottom: 40,
+        paddingTop: 30,
     },
     hint: {
         color: '#fff',
-        fontSize: 16,
-        marginBottom: 20,
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    subHint: {
+        color: '#9ca3af',
+        fontSize: 14,
+        marginBottom: 30,
     },
     closeButton: {
         backgroundColor: '#374151',

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { TouchPad } from './src/components/TouchPad';
 import { KeyboardControl } from './src/components/KeyboardControl';
 import { QRScanner } from './src/components/QRScanner';
 import { SplashScreen } from './src/components/SplashScreen';
+import { TouchPad } from './src/components/TouchPad';
 import { websocketService } from './src/services/websocket';
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
@@ -18,11 +18,15 @@ export default function App() {
   const [showScanner, setShowScanner] = useState(false);
   const [mode, setMode] = useState<ControlMode>('trackpad');
   const [showSplash, setShowSplash] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleConnect = async () => {
+    setErrorMessage('');
     const success = await websocketService.connect(serverIp, setConnectionState);
     if (success) {
       setShowInput(false);
+    } else {
+      setErrorMessage('连接失败，请检查：\n1. 电脑服务端是否运行\n2. IP地址是否正确\n3. 手机和电脑是否在同一网络');
     }
   };
 
@@ -54,9 +58,12 @@ export default function App() {
   const handleQRScan = async (ip: string) => {
     setShowScanner(false);
     setServerIp(ip);
+    setErrorMessage('');
     const success = await websocketService.connect(ip, setConnectionState);
     if (success) {
       setShowInput(false);
+    } else {
+      setErrorMessage('连接失败，请检查：\n1. 电脑服务端是否运行\n2. IP地址是否正确\n3. 手机和电脑是否在同一网络');
     }
   };
 
@@ -92,16 +99,27 @@ export default function App() {
         {showInput && !showScanner && (
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>连接到电脑</Text>
+
+            {errorMessage ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorIcon}>⚠️</Text>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
             <TextInput
               style={styles.input}
               value={serverIp}
-              onChangeText={setServerIp}
+              onChangeText={(text) => {
+                setServerIp(text);
+                setErrorMessage('');
+              }}
               placeholder="输入电脑 IP 地址"
               placeholderTextColor="#6b7280"
               keyboardType="numeric"
             />
             <TouchableOpacity
-              style={styles.connectBtn}
+              style={[styles.connectBtn, connectionState === 'connecting' && styles.connectBtnDisabled]}
               onPress={handleConnect}
               disabled={connectionState === 'connecting'}
             >
@@ -111,7 +129,10 @@ export default function App() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.scanBtn}
-              onPress={() => setShowScanner(true)}
+              onPress={() => {
+                setShowScanner(true);
+                setErrorMessage('');
+              }}
             >
               <Text style={styles.scanText}>扫描二维码</Text>
             </TouchableOpacity>
@@ -230,10 +251,33 @@ const styles = StyleSheet.create({
     padding: 14,
     alignItems: 'center',
   },
+  connectBtnDisabled: {
+    backgroundColor: '#6b7280',
+    opacity: 0.6,
+  },
   connectText: {
     color: '#030712',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorBox: {
+    backgroundColor: '#7f1d1d',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  errorIcon: {
+    fontSize: 24,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorText: {
+    color: '#fca5a5',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   buttons: {
     flexDirection: 'row',

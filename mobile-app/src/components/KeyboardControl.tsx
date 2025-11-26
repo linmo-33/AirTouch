@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface KeyboardControlProps {
     onKeyDown: (key: string) => void;
@@ -8,6 +8,8 @@ interface KeyboardControlProps {
 
 export const KeyboardControl: React.FC<KeyboardControlProps> = ({ onKeyDown, onText }) => {
     const [isFocused, setIsFocused] = useState(false);
+    const [inputValue, setInputValue] = useState('');
+    const [inputKey, setInputKey] = useState(0);
     const inputRef = useRef<TextInput>(null);
     const lastSentText = useRef<string>('');
     const lastSentTime = useRef<number>(0);
@@ -39,6 +41,8 @@ export const KeyboardControl: React.FC<KeyboardControlProps> = ({ onKeyDown, onT
 
     // 处理文本输入
     const handleChangeText = (text: string) => {
+        setInputValue(text);
+
         // 只发送新增的部分
         if (text.length > lastInputValue.current.length) {
             const newText = text.slice(lastInputValue.current.length);
@@ -48,31 +52,55 @@ export const KeyboardControl: React.FC<KeyboardControlProps> = ({ onKeyDown, onT
         lastInputValue.current = text;
     };
 
+    // 处理失去焦点
+    const handleBlur = () => {
+        setIsFocused(false);
+        // 清空输入框，确保下次可以正常调起键盘
+        lastInputValue.current = '';
+        setInputValue('');
+        // 重新挂载 TextInput 以重置状态
+        setInputKey(prev => prev + 1);
+    };
+
+    // 处理点击输入区域
+    const handleInputAreaPress = () => {
+        // 使用 setTimeout 确保在下一个事件循环中执行
+        setTimeout(() => {
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        }, 0);
+    };
+
     return (
         <ScrollView style={styles.container}>
             {/* 输入区域 */}
-            <TouchableOpacity
-                style={[styles.inputArea, isFocused && styles.inputAreaActive]}
-                onPress={() => inputRef.current?.focus()}
-            >
-                <Text style={[styles.inputTitle, isFocused && styles.inputTitleActive]}>
-                    {isFocused ? '输入模式已激活' : '点击开始输入'}
-                </Text>
-                <Text style={styles.inputHint}>
-                    在手机上输入的字符会实时发送到电脑
-                </Text>
-            </TouchableOpacity>
-
-            <TextInput
-                ref={inputRef}
-                style={styles.hiddenInput}
-                onChangeText={handleChangeText}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="off"
-            />
+            <View style={[styles.inputArea, isFocused && styles.inputAreaActive]}>
+                <TextInput
+                    key={inputKey}
+                    ref={inputRef}
+                    style={styles.transparentInput}
+                    value={inputValue}
+                    onChangeText={handleChangeText}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={handleBlur}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="off"
+                    keyboardType="default"
+                    caretHidden={true}
+                    multiline={false}
+                    placeholder=""
+                />
+                <View style={styles.inputOverlay} pointerEvents="none">
+                    <Text style={[styles.inputTitle, isFocused && styles.inputTitleActive]}>
+                        {isFocused ? '输入模式已激活' : '点击开始输入'}
+                    </Text>
+                    <Text style={styles.inputHint}>
+                        在手机上输入的字符会实时发送到电脑
+                    </Text>
+                </View>
+            </View>
 
             {/* 功能键 */}
             <View style={styles.section}>
@@ -191,13 +219,18 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         textAlign: 'center',
     },
-    hiddenInput: {
+    transparentInput: {
         position: 'absolute',
         top: 0,
         left: 0,
-        width: 1,
-        height: 1,
-        opacity: 0,
+        right: 0,
+        bottom: 0,
+        color: 'transparent',
+        backgroundColor: 'transparent',
+    },
+    inputOverlay: {
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     section: {
         gap: 12,

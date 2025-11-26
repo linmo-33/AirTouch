@@ -298,7 +298,7 @@ class AirTouchGUI:
             font=("Segoe UI", 20, "bold"),
             bg="#1976D2",
             fg="white"
-        )
+        ) 
         title_label.pack(pady=18)
         
         # 主容器

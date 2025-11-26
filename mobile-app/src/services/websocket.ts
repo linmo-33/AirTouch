@@ -19,19 +19,32 @@ class WebSocketService {
       return new Promise((resolve) => {
         if (!this.socket) return resolve(false);
 
+        // 设置连接超时
+        const timeout = setTimeout(() => {
+          console.log("WebSocket Connection Timeout");
+          if (this.socket) {
+            this.socket.close();
+          }
+          onStatusChange("error");
+          resolve(false);
+        }, 5000);
+
         this.socket.onopen = () => {
+          clearTimeout(timeout);
           console.log("WebSocket Connected (Binary Protocol)");
           onStatusChange("connected");
           resolve(true);
         };
 
         this.socket.onerror = (err) => {
+          clearTimeout(timeout);
           console.error("WebSocket Error", err);
           onStatusChange("error");
           resolve(false);
         };
 
         this.socket.onclose = () => {
+          clearTimeout(timeout);
           console.log("WebSocket Closed");
           onStatusChange("disconnected");
         };
