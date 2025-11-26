@@ -6,8 +6,10 @@ WebSocket server that receives commands from the mobile app and controls the PC
 
 import asyncio
 import json
+import os
 import socket
 import struct
+import sys
 import threading
 import tkinter as tk
 from tkinter import ttk, scrolledtext
@@ -25,6 +27,15 @@ pyautogui.PAUSE = 0  # 移除延迟，保证鼠标移动丝滑
 
 # 日志开关
 ENABLE_LOGGING = True
+
+def get_resource_path(relative_path):
+    """获取资源文件的绝对路径（支持打包后的环境）"""
+    try:
+        # PyInstaller 创建临时文件夹，路径存储在 _MEIPASS 中
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class PCController:
     def __init__(self, host='0.0.0.0', port=8765, log_callback=None):
@@ -251,11 +262,14 @@ class AirTouchGUI:
         self.root.geometry("700x750")
         self.root.resizable(False, False)
         
-        # 设置窗口图标（如果有的话）
+        # 设置窗口图标
         try:
-            self.root.iconbitmap(default='icon.ico')
-        except:
-            pass
+            icon_path = get_resource_path('icon.ico')
+            icon_img = Image.open(icon_path)
+            icon_photo = ImageTk.PhotoImage(icon_img)
+            self.root.iconphoto(True, icon_photo)
+        except Exception as e:
+            pass  # 如果图标加载失败，继续运行
         
         self.controller = None
         self.server_thread = None
