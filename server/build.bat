@@ -45,6 +45,7 @@ echo [3/4] 开始打包...
     --add-data "icon.png;." ^
     --hidden-import=PIL._tkinter_finder ^
     --collect-all qrcode ^
+    --uac-admin ^
     --noconfirm ^
     pc_controller.py
 

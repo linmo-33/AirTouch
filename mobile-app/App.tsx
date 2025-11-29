@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { DebugPanel } from './src/components/DebugPanel';
 import { KeyboardControl } from './src/components/KeyboardControl';
@@ -23,6 +23,10 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState('');
   const [showDebug, setShowDebug] = useState(false);
   const [debugTapCount, setDebugTapCount] = useState(0);
+  const appState = useRef(AppState.currentState);
+  const lastConnectedIp = useRef<string>('');
+  const reconnectAttempts = useRef<number>(0);
+  const maxReconnectAttempts = 3;
 
   const handleConnect = async () => {
     setErrorMessage('');
@@ -31,9 +35,33 @@ export default function App() {
     if (success) {
       logger.info('连接成功');
       setShowInput(false);
+      lastConnectedIp.current = serverIp;
+      reconnectAttempts.current = 0;
     } else {
       logger.error('连接失败');
       setErrorMessage('连接失败，请检查：\n1. 电脑服务端是否运行\n2. IP地址是否正确\n3. 手机和电脑是否在同一网络');
+    }
+  };
+
+  const handleReconnect = async () => {
+    if (!lastConnectedIp.current || reconnectAttempts.current >= maxReconnectAttempts) {
+      logger.warn('达到最大重连次数或无历史连接');
+      return;
+    }
+
+    reconnectAttempts.current += 1;
+    logger.info(`尝试自动重连 (${reconnectAttempts.current}/${maxReconnectAttempts})`);
+
+    const success = await websocketService.connect(lastConnectedIp.current, setConnectionState);
+    if (success) {
+      logger.info('重连成功');
+      reconnectAttempts.current = 0;
+    } else {
+      logger.error(`重连失败 (${reconnectAttempts.current}/${maxReconnectAttempts})`);
+      if (reconnectAttempts.current >= maxReconnectAttempts) {
+        setShowInput(true);
+        setErrorMessage('连接已断开，请重新连接');
+      }
     }
   };
 
@@ -51,6 +79,8 @@ export default function App() {
   const handleDisconnect = () => {
     websocketService.disconnect();
     setShowInput(true);
+    lastConnectedIp.current = '';
+    reconnectAttempts.current = 0;
   };
 
   const handleMouseMove = (dx: number, dy: number) => {
@@ -63,6 +93,10 @@ export default function App() {
 
   const handleClick = (button: string) => {
     websocketService.sendClick(button);
+  };
+
+  const handleLeftClick = () => {
+    websocketService.sendClick('left');
   };
 
   const handleKeyDown = (key: string) => {
@@ -82,11 +116,49 @@ export default function App() {
     if (success) {
       logger.info('连接成功');
       setShowInput(false);
+      lastConnectedIp.current = ip;
+      reconnectAttempts.current = 0;
     } else {
       logger.error('连接失败');
       setErrorMessage('连接失败，请检查：\n1. 电脑服务端是否运行\n2. IP地址是否正确\n3. 手机和电脑是否在同一网络');
     }
   };
+
+  // 监听应用状态变化
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      logger.info(`应用状态变化: ${appState.current} -> ${nextAppState}`);
+
+      // 从后台切换到前台
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        logger.info('应用回到前台');
+
+        // 如果之前已连接但现在断开，尝试重连
+        if (lastConnectedIp.current && connectionState !== 'connected') {
+          logger.info('检测到连接断开，尝试重连...');
+          handleReconnect();
+        }
+      }
+
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [connectionState]);
+
+  // 监听连接状态变化，自动重连
+  useEffect(() => {
+    if (connectionState === 'disconnected' && lastConnectedIp.current && !showInput) {
+      logger.info('连接意外断开，尝试重连...');
+      const timer = setTimeout(() => {
+        handleReconnect();
+      }, 2000); // 2秒后尝试重连
+
+      return () => clearTimeout(timer);
+    }
+  }, [connectionState]);
 
   // 显示启动页面
   if (showSplash) {
@@ -170,7 +242,7 @@ export default function App() {
           <>
             {mode === 'trackpad' ? (
               <>
-                <TouchPad onMove={handleMouseMove} onScroll={handleScroll} />
+                <TouchPad onMove={handleMouseMove} onScroll={handleScroll} onLeftClick={handleLeftClick} />
 
                 {/* Mouse Buttons */}
                 <View style={styles.buttons}>

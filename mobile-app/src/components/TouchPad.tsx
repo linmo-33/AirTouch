@@ -4,14 +4,22 @@ import { View, StyleSheet, PanResponder, Text } from 'react-native';
 interface TouchPadProps {
     onMove: (dx: number, dy: number) => void;
     onScroll: (dy: number) => void;
+    onLeftClick: () => void;
 }
 
-const MOUSE_SENSITIVITY = 1;
+const MOUSE_SENSITIVITY = 1.5; // 基础灵敏度
+const SCROLL_SENSITIVITY = 0.3; // 滚动灵敏度
+const MOVE_THRESHOLD = 0.1; // 移动阈值（降低以提高响应）
+const ACCELERATION_FACTOR = 1.8; // 加速因子
 
-export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll }) => {
+export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll, onLeftClick }) => {
     const [active, setActive] = useState(false);
+    const [sensitivity, setSensitivity] = useState(MOUSE_SENSITIVITY);
     const prevPos = useRef<{ x: number; y: number } | null>(null);
     const twoFingerState = useRef<{ lastY: number } | null>(null);
+    const tapStartTime = useRef<number>(0);
+    const tapStartPos = useRef<{ x: number; y: number } | null>(null);
+    const hasMoved = useRef<boolean>(false);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -28,11 +36,18 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll }) => {
                 }
 
                 if (touches.length === 1) {
-                    // 单指：记录起始位置
+                    // 单指：记录起始位置和时间（用于检测点击）
+                    const touch = touches[0];
                     prevPos.current = {
-                        x: touches[0].pageX,
-                        y: touches[0].pageY,
+                        x: touch.pageX,
+                        y: touch.pageY,
                     };
+                    tapStartTime.current = Date.now();
+                    tapStartPos.current = {
+                        x: touch.pageX,
+                        y: touch.pageY,
+                    };
+                    hasMoved.current = false;
                     twoFingerState.current = null;
                     //console.log('👆 单指模式');
                 } else if (touches.length === 2) {
@@ -40,6 +55,7 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll }) => {
                     const avgY = (touches[0].pageY + touches[1].pageY) / 2;
                     twoFingerState.current = { lastY: avgY };
                     prevPos.current = null; // 清除单指状态
+                    tapStartTime.current = 0; // 清除点击检测
                     //console.log(`📜 双指滚动模式: avgY=${avgY.toFixed(1)}`);
                 }
             },
@@ -63,9 +79,20 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll }) => {
                     const dx = touch.pageX - prevPos.current.x;
                     const dy = touch.pageY - prevPos.current.y;
 
-                    // 直接发送，简单高效
-                    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-                        onMove(dx * MOUSE_SENSITIVITY, dy * MOUSE_SENSITIVITY);
+                    // 降低阈值，提高响应速度
+                    if (Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD) {
+                        // 计算移动距离，用于加速度
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        // 加速度曲线：快速移动时增加灵敏度
+                        let finalSensitivity = sensitivity;
+                        if (distance > 10) {
+                            // 距离越大，加速越明显
+                            finalSensitivity *= Math.min(ACCELERATION_FACTOR, 1 + (distance / 50));
+                        }
+
+                        onMove(dx * finalSensitivity, dy * finalSensitivity);
+                        hasMoved.current = true; // 标记已移动
                     }
 
                     // 更新上一帧位置
@@ -75,19 +102,38 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll }) => {
                     const avgY = (touches[0].pageY + touches[1].pageY) / 2;
                     const deltaY = avgY - twoFingerState.current.lastY;
 
-                    if (Math.abs(deltaY) > 1) {
-                        //console.log(`📜 滚动: deltaY=${deltaY.toFixed(1)}`);
-                        onScroll(-deltaY);
+                    if (Math.abs(deltaY) > 0.5) {
+                        // 优化滚动灵敏度
+                        onScroll(-deltaY * SCROLL_SENSITIVITY);
                     }
 
                     twoFingerState.current.lastY = avgY;
                 }
             },
 
-            onPanResponderRelease: () => {
+            onPanResponderRelease: (evt) => {
+                // 检测是否为点击（tap）
+                if (tapStartTime.current > 0 && tapStartPos.current && !hasMoved.current) {
+                    const tapDuration = Date.now() - tapStartTime.current;
+                    const touch = evt.nativeEvent.changedTouches[0];
+
+                    if (touch) {
+                        const dx = Math.abs(touch.pageX - tapStartPos.current.x);
+                        const dy = Math.abs(touch.pageY - tapStartPos.current.y);
+
+                        // 如果点击时间短于 200ms 且移动距离小于 10px，视为点击
+                        if (tapDuration < 200 && dx < 10 && dy < 10) {
+                            onLeftClick();
+                        }
+                    }
+                }
+
                 setActive(false);
                 prevPos.current = null;
                 twoFingerState.current = null;
+                tapStartTime.current = 0;
+                tapStartPos.current = null;
+                hasMoved.current = false;
             },
         })
     ).current;
@@ -100,7 +146,7 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll }) => {
             >
                 <Text style={styles.hint}>触控区域</Text>
             </View>
-            <Text style={styles.tip}>💡 双指上下滑动滚动</Text>
+            <Text style={styles.tip}>💡 单击触控板=左键点击 | 双指上下滑动=滚动</Text>
         </View>
     );
 };

@@ -12,7 +12,7 @@ import struct
 import sys
 import threading
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 from typing import Dict, Any, Optional
 from io import StringIO
 import websockets
@@ -20,6 +20,7 @@ import pyautogui
 import pyperclip
 import qrcode
 from PIL import Image, ImageTk
+import ctypes
 
 # 配置 PyAutoGUI - 极致性能
 pyautogui.FAILSAFE = False
@@ -164,6 +165,11 @@ class PCController:
                 content = data.get('content', '')
                 if content:
                     self.handle_text(content)
+                    
+            elif cmd_type == 'ping':
+                # 心跳响应（保持连接活跃）
+                if self.current_client:
+                    await self.current_client.send(json.dumps({'type': 'pong'}))
                     
         except Exception as e:
             if ENABLE_LOGGING:
@@ -677,8 +683,56 @@ class AirTouchGUI:
         """运行GUI"""
         self.root.mainloop()
 
+def is_admin():
+    """检查是否以管理员权限运行"""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
+
+def request_admin():
+    """请求管理员权限"""
+    if sys.platform == 'win32':
+        try:
+            # 以管理员权限重新运行
+            ctypes.windll.shell32.ShellExecuteW(
+                None, 
+                "runas", 
+                sys.executable, 
+                " ".join(sys.argv), 
+                None, 
+                1
+            )
+            return True
+        except:
+            return False
+    return False
+
 def main():
     """主函数"""
+    # 检查管理员权限
+    if not is_admin():
+        root = tk.Tk()
+        root.withdraw()  # 隐藏主窗口
+        
+        result = messagebox.askyesno(
+            "需要管理员权限",
+            "AirTouch 需要管理员权限才能控制所有程序（包括以管理员身份运行的程序）。\n\n"
+            "是否以管理员身份重新启动？\n\n"
+            "提示：如果选择「否」，程序仍可运行，但无法控制管理员权限的程序。",
+            icon='warning'
+        )
+        
+        root.destroy()
+        
+        if result:
+            # 请求管理员权限并退出当前进程
+            if request_admin():
+                sys.exit(0)
+            else:
+                # 请求失败，继续以普通权限运行
+                pass
+    
     app = AirTouchGUI()
     app.run()
 

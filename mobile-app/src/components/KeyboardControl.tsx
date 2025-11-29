@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
         bottom: 0,
         color: 'transparent',
         backgroundColor: 'transparent',
+        opacity: 0,
     },
     inputOverlay: {
         alignItems: 'center',

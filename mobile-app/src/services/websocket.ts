@@ -6,6 +6,8 @@ class WebSocketService {
   private socket: WebSocket | null = null;
   private ip: string = "";
   private useBinaryProtocol: boolean = true;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private reconnectOnClose: boolean = true;
 
   async connect(
     ip: string,
@@ -18,17 +20,17 @@ class WebSocketService {
     try {
       this.socket = new WebSocket(`ws://${this.ip}:8765`);
       this.socket.binaryType = "arraybuffer";
-      logger.debug('WebSocket 实例已创建，等待连接...');
+      logger.debug("WebSocket 实例已创建，等待连接...");
 
       return new Promise((resolve) => {
         if (!this.socket) {
-          logger.error('WebSocket 实例创建失败');
+          logger.error("WebSocket 实例创建失败");
           return resolve(false);
         }
 
         // 设置连接超时
         const timeout = setTimeout(() => {
-          logger.error('连接超时（5秒）');
+          logger.error("连接超时（5秒）");
           if (this.socket) {
             this.socket.close();
           }
@@ -38,7 +40,9 @@ class WebSocketService {
 
         this.socket.onopen = () => {
           clearTimeout(timeout);
-          logger.info('WebSocket 连接成功');
+          logger.info("WebSocket 连接成功");
+          this.reconnectOnClose = true;
+          this.startHeartbeat();
           onStatusChange("connected");
           resolve(true);
         };
@@ -52,8 +56,15 @@ class WebSocketService {
 
         this.socket.onclose = (event) => {
           clearTimeout(timeout);
-          logger.warn(`WebSocket 关闭 - Code: ${event.code}, Reason: ${event.reason || '无'}`);
-          onStatusChange("disconnected");
+          this.stopHeartbeat();
+          logger.warn(
+            `WebSocket 关闭 - Code: ${event.code}, Reason: ${
+              event.reason || "无"
+            }`
+          );
+          if (this.reconnectOnClose) {
+            onStatusChange("disconnected");
+          }
         };
       });
     } catch (e) {
@@ -64,8 +75,10 @@ class WebSocketService {
   }
 
   disconnect() {
+    this.reconnectOnClose = false;
+    this.stopHeartbeat();
     if (this.socket) {
-      logger.info('主动断开连接');
+      logger.info("主动断开连接");
       this.socket.close();
     }
     this.socket = null;
@@ -112,6 +125,28 @@ class WebSocketService {
 
   sendText(content: string) {
     this.send({ type: "text", content });
+  }
+
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    // 每30秒发送一次心跳，保持连接活跃
+    this.heartbeatInterval = setInterval(() => {
+      if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+        try {
+          this.send({ type: "ping" });
+          logger.debug("发送心跳");
+        } catch (e) {
+          logger.error(`心跳发送失败: ${e}`);
+        }
+      }
+    }, 30000);
+  }
+
+  private stopHeartbeat() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 }
 
