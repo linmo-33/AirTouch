@@ -42,7 +42,6 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "enableShrinkResourcesInReleaseBuilds": true,
             "extraGradleProps": {
               "reactNativeArchitectures": "arm64-v8a",
               "android.enableR8.fullMode": "true"
