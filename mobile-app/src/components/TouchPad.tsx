@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, PanResponder, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { PanResponder, StyleSheet, Text, View } from 'react-native';
 
 interface TouchPadProps {
     onMove: (dx: number, dy: number) => void;
@@ -7,36 +7,52 @@ interface TouchPadProps {
     onLeftClick: () => void;
 }
 
-const MOUSE_SENSITIVITY = 1.5; // 基础灵敏度
-const SCROLL_SENSITIVITY = 0.3; // 滚动灵敏度
-const MOVE_THRESHOLD = 0.1; // 移动阈值（降低以提高响应）
-const ACCELERATION_FACTOR = 1.8; // 加速因子
+const SCROLL_SENSITIVITY = 1.0; // 提高滚动灵敏度
+const MOVE_THRESHOLD = 0.1;
+const DEADZONE = 0.5; // 死区阈值，过滤微小抖动
 
 export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll, onLeftClick }) => {
     const [active, setActive] = useState(false);
-    const [sensitivity, setSensitivity] = useState(MOUSE_SENSITIVITY);
     const prevPos = useRef<{ x: number; y: number } | null>(null);
+    const accumulatedX = useRef<number>(0);
+    const accumulatedY = useRef<number>(0);
+    const pendingDx = useRef<number>(0);
+    const pendingDy = useRef<number>(0);
+    const pendingScroll = useRef<number>(0); // 滚动累加器
     const twoFingerState = useRef<{ lastY: number } | null>(null);
     const tapStartTime = useRef<number>(0);
     const tapStartPos = useRef<{ x: number; y: number } | null>(null);
     const hasMoved = useRef<boolean>(false);
 
+    // 节流发送：60Hz 定时器（稳定网络流）
+    useEffect(() => {
+        const sendInterval = setInterval(() => {
+            // 发送鼠标移动
+            if (pendingDx.current !== 0 || pendingDy.current !== 0) {
+                onMove(pendingDx.current, pendingDy.current);
+                pendingDx.current = 0;
+                pendingDy.current = 0;
+            }
+
+        }, 16); // 16ms ≈ 60Hz
+
+        return () => clearInterval(sendInterval);
+    }, [onMove, onScroll]);
+
     const panResponder = useRef(
         PanResponder.create({
             onStartShouldSetPanResponder: () => true,
             onMoveShouldSetPanResponder: () => true,
-            onPanResponderTerminationRequest: () => false, // 不允许其他手势中断
+            onPanResponderTerminationRequest: () => false,
 
             onPanResponderGrant: (evt) => {
                 const touches = evt.nativeEvent.touches;
 
-                // 只在状态改变时更新（避免不必要的重渲染）
                 if (!active) {
                     setActive(true);
                 }
 
                 if (touches.length === 1) {
-                    // 单指：记录起始位置和时间（用于检测点击）
                     const touch = touches[0];
                     prevPos.current = {
                         x: touch.pageX,
@@ -49,62 +65,77 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll, onLeftClic
                     };
                     hasMoved.current = false;
                     twoFingerState.current = null;
-                    //console.log('👆 单指模式');
+                    accumulatedX.current = 0;
+                    accumulatedY.current = 0;
                 } else if (touches.length === 2) {
-                    // 双指：记录起始位置
                     const avgY = (touches[0].pageY + touches[1].pageY) / 2;
                     twoFingerState.current = { lastY: avgY };
-                    prevPos.current = null; // 清除单指状态
-                    tapStartTime.current = 0; // 清除点击检测
-                    //console.log(`📜 双指滚动模式: avgY=${avgY.toFixed(1)}`);
+                    prevPos.current = null;
+                    tapStartTime.current = 0;
                 }
             },
 
             onPanResponderMove: (evt) => {
                 const touches = evt.nativeEvent.touches;
 
-                // 动态检测手指数量变化
                 if (touches.length === 2 && !twoFingerState.current) {
-                    // 从单指切换到双指
                     const avgY = (touches[0].pageY + touches[1].pageY) / 2;
                     twoFingerState.current = { lastY: avgY };
                     prevPos.current = null;
-                    //console.log(`📜 切换到双指滚动模式: avgY=${avgY.toFixed(1)}`);
                     return;
                 }
 
                 if (touches.length === 1 && prevPos.current && !twoFingerState.current) {
-                    // 单指移动：计算相对位移
                     const touch = touches[0];
                     const dx = touch.pageX - prevPos.current.x;
                     const dy = touch.pageY - prevPos.current.y;
 
-                    // 降低阈值，提高响应速度
                     if (Math.abs(dx) > MOVE_THRESHOLD || Math.abs(dy) > MOVE_THRESHOLD) {
-                        // 计算移动距离，用于加速度
+                        // 计算移动距离
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
-                        // 加速度曲线：快速移动时增加灵敏度
-                        let finalSensitivity = sensitivity;
-                        if (distance > 10) {
-                            // 距离越大，加速越明显
-                            finalSensitivity *= Math.min(ACCELERATION_FACTOR, 1 + (distance / 50));
+                        // 分段加速度曲线
+                        let sensitivity: number;
+                        if (distance < 3) {
+                            sensitivity = 1.0;
+                        } else if (distance < 8) {
+                            sensitivity = 1.5;
+                        } else if (distance < 15) {
+                            sensitivity = 2.0;
+                        } else {
+                            sensitivity = 2.5;
                         }
 
-                        onMove(dx * finalSensitivity, dy * finalSensitivity);
-                        hasMoved.current = true; // 标记已移动
+                        // 应用灵敏度
+                        const rawDx = dx * sensitivity;
+                        const rawDy = dy * sensitivity;
+
+                        // 亚像素累积
+                        accumulatedX.current += rawDx;
+                        accumulatedY.current += rawDy;
+
+                        const sendDx = Math.round(accumulatedX.current);
+                        const sendDy = Math.round(accumulatedY.current);
+
+                        // 累加到待发送队列（不立即发送，由定时器统一发送）
+                        if (Math.abs(sendDx) > DEADZONE || Math.abs(sendDy) > DEADZONE) {
+                            pendingDx.current += sendDx;
+                            pendingDy.current += sendDy;
+                            accumulatedX.current -= sendDx;
+                            accumulatedY.current -= sendDy;
+                            hasMoved.current = true;
+                        }
                     }
 
-                    // 更新上一帧位置
                     prevPos.current = { x: touch.pageX, y: touch.pageY };
                 } else if (touches.length === 2 && twoFingerState.current) {
-                    // 双指滚动
                     const avgY = (touches[0].pageY + touches[1].pageY) / 2;
                     const deltaY = avgY - twoFingerState.current.lastY;
 
-                    if (Math.abs(deltaY) > 0.5) {
-                        // 优化滚动灵敏度
-                        onScroll(-deltaY * SCROLL_SENSITIVITY);
+                    if (Math.abs(deltaY) > 0.3) {
+                        // 累加到滚动队列，不立即发送
+                        const scrollAmount = -deltaY * SCROLL_SENSITIVITY;
+                        pendingScroll.current += scrollAmount;
                     }
 
                     twoFingerState.current.lastY = avgY;
@@ -112,7 +143,6 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll, onLeftClic
             },
 
             onPanResponderRelease: (evt) => {
-                // 检测是否为点击（tap）
                 if (tapStartTime.current > 0 && tapStartPos.current && !hasMoved.current) {
                     const tapDuration = Date.now() - tapStartTime.current;
                     const touch = evt.nativeEvent.changedTouches[0];
@@ -121,7 +151,6 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll, onLeftClic
                         const dx = Math.abs(touch.pageX - tapStartPos.current.x);
                         const dy = Math.abs(touch.pageY - tapStartPos.current.y);
 
-                        // 如果点击时间短于 200ms 且移动距离小于 10px，视为点击
                         if (tapDuration < 200 && dx < 10 && dy < 10) {
                             onLeftClick();
                         }
@@ -130,6 +159,8 @@ export const TouchPad: React.FC<TouchPadProps> = ({ onMove, onScroll, onLeftClic
 
                 setActive(false);
                 prevPos.current = null;
+                accumulatedX.current = 0;
+                accumulatedY.current = 0;
                 twoFingerState.current = null;
                 tapStartTime.current = 0;
                 tapStartPos.current = null;

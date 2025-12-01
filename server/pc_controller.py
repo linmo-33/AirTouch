@@ -47,6 +47,13 @@ class PCController:
         self.is_running = False
         self.server = None
         
+        # 鼠标移动平滑系统（生产者-消费者模式）
+        self.pending_x = 0.0
+        self.pending_y = 0.0
+        self.motion_lock = threading.Lock()
+        self.motion_thread = None
+        self.motion_running = False
+        
     def get_local_ip(self) -> str:
         """获取本机局域网 IP 地址"""
         try:
@@ -129,7 +136,10 @@ class PCController:
                 msg_type, dx, dy = struct.unpack('>Bhh', message)
                 
                 if msg_type == 1:  # 鼠标移动
-                    pyautogui.moveRel(dx, dy, _pause=False)
+                    # 累加到待移动队列（生产者）
+                    with self.motion_lock:
+                        self.pending_x += dx
+                        self.pending_y += dy
         except Exception as e:
             if ENABLE_LOGGING:
                 self.log(f"❌ 二进制命令错误: {e}")
@@ -140,13 +150,7 @@ class PCController:
             data: Dict[str, Any] = json.loads(message)
             cmd_type = data.get('type')
             
-            if cmd_type == 'move':
-                # 兼容旧的 JSON 格式鼠标移动
-                dx = data.get('dx', 0)
-                dy = data.get('dy', 0)
-                pyautogui.moveRel(dx, dy, _pause=False)
-                
-            elif cmd_type == 'click':
+            if cmd_type == 'click':
                 button = data.get('button', 'left')
                 pyautogui.click(button=button)
                 
@@ -224,13 +228,49 @@ class PCController:
             if ENABLE_LOGGING:
                 self.log(f"❌ 文本输入错误: {e}")
     
+    def motion_interpolation_loop(self):
+        """鼠标移动插值循环（消费者线程）- 100Hz高频平滑"""
+        import time
+        
+        SMOOTH_FACTOR = 0.3  # EMA平滑系数 (0.2-0.4)
+        DEADZONE = 0.5  # 死区阈值，过滤微小抖动
+        LOOP_INTERVAL = 0.01  # 10ms = 100Hz
+        
+        self.log("🎯 鼠标插值线程已启动 (100Hz)")
+        
+        while self.motion_running:
+            try:
+                # 读取待移动距离并计算本次移动量
+                with self.motion_lock:
+                    move_x = self.pending_x * SMOOTH_FACTOR
+                    move_y = self.pending_y * SMOOTH_FACTOR
+                    self.pending_x -= move_x
+                    self.pending_y -= move_y
+                
+                # 死区过滤 + 执行移动
+                if abs(move_x) > DEADZONE or abs(move_y) > DEADZONE:
+                    pyautogui.moveRel(int(round(move_x)), int(round(move_y)), _pause=False)
+                
+                time.sleep(LOOP_INTERVAL)
+            except Exception as e:
+                if ENABLE_LOGGING:
+                    self.log(f"❌ 插值循环错误: {e}")
+                time.sleep(0.1)
+        
+        self.log("🛑 鼠标插值线程已停止")
+    
     async def start_server(self):
         """启动 WebSocket 服务器"""
         ip = self.get_local_ip()
         self.is_running = True
         
+        # 启动鼠标插值线程
+        self.motion_running = True
+        self.motion_thread = threading.Thread(target=self.motion_interpolation_loop, daemon=True)
+        self.motion_thread.start()
+        
         self.log("=" * 60)
-        self.log("  🚀 AirTouch Server")
+        self.log("  🚀 AirTouch Server (高性能插值模式)")
         self.log("=" * 60)
         self.log(f"  📡 局域网地址: {ip}:{self.port}")
         self.log(f"  🔗 WebSocket: ws://{ip}:{self.port}")
@@ -239,6 +279,7 @@ class PCController:
         self.log("  💡 提示：")
         self.log("     • 仅允许一个客户端连接")
         self.log("     • 支持二进制协议（低延迟鼠标移动）")
+        self.log("     • 100Hz 插值循环 + EMA 平滑算法")
         self.log("     • 手机和电脑需在同一局域网")
         self.log("     • 检查防火墙是否允许端口 8765")
         self.log("=" * 60)
@@ -260,6 +301,11 @@ class PCController:
     def stop_server(self):
         """停止服务器"""
         self.is_running = False
+        
+        # 停止鼠标插值线程
+        self.motion_running = False
+        if self.motion_thread and self.motion_thread.is_alive():
+            self.motion_thread.join(timeout=2)
 
 class AirTouchGUI:
     def __init__(self):

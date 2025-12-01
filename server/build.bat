@@ -42,7 +42,7 @@ echo [3/4] 开始打包...
 "%PYINSTALLER_CMD%" --onefile --windowed ^
     --name "AirTouch" ^
     --icon "icon.ico" ^
-    --add-data "icon.png;." ^
+    --add-data "icon.ico;." ^
     --hidden-import=PIL._tkinter_finder ^
     --collect-all qrcode ^
     --uac-admin ^
