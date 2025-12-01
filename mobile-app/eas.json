@@ -18,9 +18,13 @@
     },
     "production": {
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "env": {
+        "ANDROID_NDK_VERSION": "26.1.10909125"
+      }
     }
   },
   "submit": {
