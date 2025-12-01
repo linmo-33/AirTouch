@@ -1,4 +1,4 @@
-const { withAppBuildGradle } = require('@expo/config-plugins');
+const { withAppBuildGradle } = require('expo/config-plugins');
 
 const withAndroidAbiFilter = (config) => {
     return withAppBuildGradle(config, (modConfig) => {
