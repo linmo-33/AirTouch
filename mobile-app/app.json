@@ -30,6 +30,7 @@
       ]
     },
     "plugins": [
+      "./plugins/withAndroidAbiFilter",
       [
         "expo-camera",
         {
