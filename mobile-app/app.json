@@ -40,18 +40,12 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "buildToolsVersion": "34.0.0",
-            "minifyEnabled": true,                    
-            "shrinkResources": true,                  
-            "extraProguardRules": "-keep class com.swmansion.reanimated.** { *; }\n-keep class com.swmansion.rnscreens.** { *; }",
-            "abiFilters": ["arm64-v8a"],              
-            "universalApk": false,                    
-            "separateApks": true                     
+            "minifyEnabled": true,
+            "shrinkResources": true      
           }
         }
-      ]
+      ],
+      "./plugins/withAbiSplits.js"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
