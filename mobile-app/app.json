@@ -41,10 +41,13 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "abiFilters": ["arm64-v8a"]
+            "extraGradleProps": {
+              "reactNativeArchitectures": "arm64-v8a"
+            }
           }
         }
-      ]
+      ],
+      "./plugins/withArm64"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
