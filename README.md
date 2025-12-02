@@ -90,14 +90,78 @@ build.bat
 
 ### 打包移动端
 
+#### 使用 EAS Build（推荐）
+
 ```bash
 cd mobile-app
 
-# Android APK
-eas build --platform android
+# 首次使用需要登录
+eas login
+
+# Android - 生成 APK（可直接安装）
+eas build --platform android --profile release-apk
+
+# Android - 生成 AAB（用于 Google Play 或提取 ARM64）
+eas build --platform android --profile release-aab
+
+# Android - 预览版 APK（测试用）
+eas build --platform android --profile preview
 
 # iOS
-eas build --platform ios
+eas build --platform ios --profile release-apk
+```
+
+**配置说明：**
+
+- `release-apk` - 生成通用 APK，包含所有架构（体积较大）
+- `release-aab` - 生成 AAB 文件，需要提取或上传 Google Play
+- `preview` - 快速预览版本，用于内部测试
+- 构建完成后会提供下载链接
+
+#### 从 AAB 提取纯 ARM64 APK
+
+EAS Build 默认生成 `.aab` 文件（包含多架构），如需提取纯 ARM64 APK（体积更小）：
+
+**准备工作：**
+
+1. 确保已安装 Java 17+（`java -version` 检查）
+2. 将以下文件放入 `mobile-app/extract/` 目录：
+   - `*.aab` - EAS Build 生成的 AAB 文件
+   - `keystore.jks` - 签名密钥库
+   - `credentials.json` - 密钥配置文件
+
+**Windows：**
+
+```bash
+cd mobile-app/extract
+extract-arm64-apk.bat
+```
+
+**macOS/Linux：**
+
+```bash
+cd mobile-app/extract
+chmod +x extract-arm64-apk.sh
+./extract-arm64-apk.sh
+```
+
+**说明：**
+
+- 脚本会自动下载 `bundletool.jar`（仅首次）
+- 从 `credentials.json` 读取签名密码
+- 生成纯 ARM64 APK，文件名格式：`Airtouch-vX.X.X-arm64-YYYYMMDD.apk`
+- 体积比 AAB 小约 30-50%，适合直接安装
+
+**credentials.json 格式：**
+
+```json
+{
+  "android": {
+    "keystorePassword": "your_keystore_password",
+    "keyAlias": "your_key_alias",
+    "keyPassword": "your_key_password"
+  }
+}
 ```
 
 ## 📖 使用指南
