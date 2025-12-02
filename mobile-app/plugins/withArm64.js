@@ -1,42 +1,28 @@
 const { withAppBuildGradle } = require('expo/config-plugins');
 
-const withArm64 = (config) => {
+module.exports = function withAbiSplit(config) {
     return withAppBuildGradle(config, (config) => {
-        const buildGradle = config.modResults.contents;
-
-        // 目标代码
-        const ndkConfig = `
-        ndk {
-            abiFilters "arm64-v8a"
-        }`;
-
-        // 🔍 改进的正则：
-        // 1. \s* 允许 'defaultConfig' 和 '{' 之间有任意空格或换行
-        // 2. /m 开启多行模式（虽然对这个简单正则影响不大，但更保险）
-        const pattern = /defaultConfig\s*\{/m;
-
-        // 防止重复注入
-        if (buildGradle.includes('abiFilters "arm64-v8a"')) {
-            console.log('✅ [withArm64] abiFilters already present. Skipping.');
-            return config;
-        }
-
-        if (buildGradle.match(pattern)) {
-            // 注入
-            console.log('✅ [withArm64] Injecting ndk abiFilters into defaultConfig...');
-            config.modResults.contents = buildGradle.replace(
-                pattern,
-                `defaultConfig {${ndkConfig}`
-            );
-        } else {
-            // ❌ 如果没找到，抛出显眼的错误，这样你在本地就能发现
-            throw new Error(
-                '❌ [withArm64] Error: Could not find "defaultConfig {" in android/app/build.gradle. Plugin failed.'
-            );
-        }
-
+        // 在 android { } 块中添加 splits 配置
+        const androidBlock = `
+android {
+  ...
+  splits {
+    abi {
+      reset()
+      enable true
+      enableSeparateBuildPerCPUArchitecture true
+      universalApk false  // 不生成通用 APK
+      include "arm64-v8a"  // 仅包含 arm64-v8a 架构
+    }
+  }
+  ...
+}
+    `;
+        // 替换或追加到 build.gradle 中的 android 块（简化处理，实际可使用字符串替换逻辑）
+        config.modResults.contents = config.modResults.contents.replace(
+            /android\s*\{/,
+            `$&${androidBlock.split('android {')[1] || ''}`
+        );
         return config;
     });
 };
-
-module.exports = withArm64;

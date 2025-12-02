@@ -40,13 +40,12 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "extraGradleProps": {
-              "reactNativeArchitectures": "arm64-v8a"
-            }
+            "enableProguardInReleaseBuilds": true,
+            "useLegacyPackaging": false 
           }
         }
       ],
-      "./plugins/withArm64"
+      "./plugins/withArm64.js"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
