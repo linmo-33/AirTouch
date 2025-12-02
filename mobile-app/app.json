@@ -40,12 +40,18 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "enableProguardInReleaseBuilds": true,
-            "useLegacyPackaging": false 
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "buildToolsVersion": "34.0.0",
+            "minifyEnabled": true,                    
+            "shrinkResources": true,                  
+            "extraProguardRules": "-keep class com.swmansion.reanimated.** { *; }\n-keep class com.swmansion.rnscreens.** { *; }",
+            "abiFilters": ["arm64-v8a"],              
+            "universalApk": false,                    
+            "separateApks": true                     
           }
         }
-      ],
-      "./plugins/withArm64.js"
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"
