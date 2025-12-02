@@ -14,13 +14,7 @@
       },
       "distribution": "internal"
     },
-    "production": {
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
-      }
-    },
-    "release-arm64": {
+    "release": {
         "env": {
           "reactNativeArchitectures": "arm64-v8a"
         },
