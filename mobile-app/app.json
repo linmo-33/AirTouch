@@ -44,8 +44,7 @@
             "shrinkResources": true      
           }
         }
-      ],
-      "./plugins/withAbiSplits.js"
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"
