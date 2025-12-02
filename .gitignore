@@ -21,7 +21,7 @@ dist/
 web-build/
 
 # React Native
-*.jks
+
 *.p8
 *.p12
 *.key
