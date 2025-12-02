@@ -6,26 +6,28 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal",
-      "node": "20.19.4"
+      "distribution": "internal"
     },
     "preview": {
       "android": {
         "buildType": "apk"
       },
-      "distribution": "internal",
-      "node": "20.19.4"
+      "distribution": "internal"
     },
     "production": {
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease"
-      },
-      "node": "20.19.4",
-      "env": {
-        "ANDROID_NDK_VERSION": "26.1.10909125"
       }
-    }
+    },
+    "release-arm64": {
+        "env": {
+          "reactNativeArchitectures": "arm64-v8a"
+        },
+        "android": {
+          "gradleCommand": ":app:assembleRelease"
+        }
+      }
   },
   "submit": {
     "production": {}
