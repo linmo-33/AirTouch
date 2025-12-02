@@ -14,15 +14,17 @@
       },
       "distribution": "internal"
     },
-    "release": {
-        "env": {
-          "reactNativeArchitectures": "arm64-v8a"
-        },
-        "android": {
-          "buildType": "apk",
-          "gradleCommand": ":app:assembleRelease"
-        }
+    "release-apk": {
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       }
+    },
+    "release-aab": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
   },
   "submit": {
     "production": {}
