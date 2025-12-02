@@ -2,29 +2,33 @@ const { withAppBuildGradle } = require('expo/config-plugins');
 
 const withArm64 = (config) => {
     return withAppBuildGradle(config, (config) => {
-        // 读取当前的 build.gradle 内容
         const buildGradle = config.modResults.contents;
 
-        // 定义我们要插入的配置块
-        // 使用 packagingOptions (或 packaging) 进行物理剔除
-        // 这是最稳健的方式，不管编译过程如何，最后打包时直接扔掉多余文件
+        // 使用 **/ 前缀来匹配任意深度的目录
         const packagingConfig = `
-// [AirTouch] Added by Config Plugin
+// ===========================================================
+// [AirTouch] 强制架构剔除配置
+// ===========================================================
 android {
     packagingOptions {
-        // 确保如果有重复文件不会报错
+        // 防止 pickFirst 冲突报错
         pickFirst 'lib/**/*.so'
         
-        // 【核心】强制剔除 x86 (模拟器) 和 armv7 (32位老手机)
-        exclude 'lib/x86/**'
-        exclude 'lib/x86_64/**'
-        exclude 'lib/armeabi-v7a/**'
+        // 🔥 重点：使用 **/ 匹配所有位置的 x86 和 armv7 文件
+        exclude '**/x86/**'
+        exclude '**/x86_64/**'
+        exclude '**/armeabi-v7a/**'
+        
+        // 双保险：有时候目录名本身不带斜杠
+        exclude '**/x86'
+        exclude '**/x86_64'
+        exclude '**/armeabi-v7a'
     }
 }
 `;
 
-        // 防止重复添加
-        if (!buildGradle.includes('[AirTouch] Added by Config Plugin')) {
+        // 防止重复写入
+        if (!buildGradle.includes('[AirTouch] 强制架构剔除配置')) {
             config.modResults.contents = buildGradle + packagingConfig;
         }
 
