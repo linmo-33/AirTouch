@@ -1,31 +1,32 @@
 const { withAppBuildGradle } = require('expo/config-plugins');
 
 const withAndroidAbiFilter = (config) => {
-    return withAppBuildGradle(config, (modConfig) => {
-        let buildGradle = modConfig.modResults.contents;
+    return withAppBuildGradle(config, (config) => {
+        const buildGradle = config.modResults.contents;
 
-        // 避免重复添加
-        if (buildGradle.includes('abiFilters "arm64-v8a"')) {
-            console.log('[withAndroidAbiFilter] ABI filter already configured');
-            return modConfig;
-        }
+        console.log('🔥 [AirTouch] 正在尝试注入 NDK 过滤配置...');
 
-        // 找到 defaultConfig 并添加 ndk abiFilters
-        if (buildGradle.includes('defaultConfig {')) {
-            buildGradle = buildGradle.replace(
-                /defaultConfig\s*\{/,
-                `defaultConfig {
+        // 正则查找 applicationId "com.airtouch.app" 这样的行
+        // 这一行一定在 defaultConfig 内部
+        const pattern = /applicationId\s+["']([^"']+)["']/;
+
+        if (buildGradle.match(pattern)) {
+            // 替换策略：保留原有的 applicationId，在其下方插入 ndk 配置
+            config.modResults.contents = buildGradle.replace(
+                pattern,
+                `applicationId "$1"
         ndk {
+            // 强制只保留 64位 ARM，这是减小体积的关键
             abiFilters "arm64-v8a"
         }`
             );
-            modConfig.modResults.contents = buildGradle;
-            console.log('[withAndroidAbiFilter] Successfully added arm64-v8a filter');
+            console.log('✅ [AirTouch] 成功注入 abiFilters!');
         } else {
-            console.warn('[withAndroidAbiFilter] Could not find defaultConfig block');
+            // 如果找不到，直接报错停止构建，避免浪费时间
+            throw new Error("❌ [AirTouch] 致命错误：无法在 build.gradle 中找到 applicationId，插件失效。");
         }
 
-        return modConfig;
+        return config;
     });
 };
 
