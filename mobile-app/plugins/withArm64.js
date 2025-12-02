@@ -4,32 +4,35 @@ const withArm64 = (config) => {
     return withAppBuildGradle(config, (config) => {
         const buildGradle = config.modResults.contents;
 
-        // 使用 **/ 前缀来匹配任意深度的目录
-        const packagingConfig = `
-// ===========================================================
-// [AirTouch] 强制架构剔除配置
-// ===========================================================
-android {
-    packagingOptions {
-        // 防止 pickFirst 冲突报错
-        pickFirst 'lib/**/*.so'
-        
-        // 🔥 重点：使用 **/ 匹配所有位置的 x86 和 armv7 文件
-        exclude '**/x86/**'
-        exclude '**/x86_64/**'
-        exclude '**/armeabi-v7a/**'
-        
-        // 双保险：有时候目录名本身不带斜杠
-        exclude '**/x86'
-        exclude '**/x86_64'
-        exclude '**/armeabi-v7a'
-    }
-}
-`;
+        // 目标代码
+        const ndkConfig = `
+        ndk {
+            abiFilters "arm64-v8a"
+        }`;
 
-        // 防止重复写入
-        if (!buildGradle.includes('[AirTouch] 强制架构剔除配置')) {
-            config.modResults.contents = buildGradle + packagingConfig;
+        // 🔍 改进的正则：
+        // 1. \s* 允许 'defaultConfig' 和 '{' 之间有任意空格或换行
+        // 2. /m 开启多行模式（虽然对这个简单正则影响不大，但更保险）
+        const pattern = /defaultConfig\s*\{/m;
+
+        // 防止重复注入
+        if (buildGradle.includes('abiFilters "arm64-v8a"')) {
+            console.log('✅ [withArm64] abiFilters already present. Skipping.');
+            return config;
+        }
+
+        if (buildGradle.match(pattern)) {
+            // 注入
+            console.log('✅ [withArm64] Injecting ndk abiFilters into defaultConfig...');
+            config.modResults.contents = buildGradle.replace(
+                pattern,
+                `defaultConfig {${ndkConfig}`
+            );
+        } else {
+            // ❌ 如果没找到，抛出显眼的错误，这样你在本地就能发现
+            throw new Error(
+                '❌ [withArm64] Error: Could not find "defaultConfig {" in android/app/build.gradle. Plugin failed.'
+            );
         }
 
         return config;
