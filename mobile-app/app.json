@@ -30,7 +30,6 @@
       ]
     },
     "plugins": [
-      "./plugins/withAndroidAbiFilter",
       [
         "expo-camera",
         {
@@ -42,10 +41,7 @@
         {
           "android": {
             "usesCleartextTraffic": true,
-            "extraGradleProps": {
-              "reactNativeArchitectures": "arm64-v8a",
-              "android.enableR8.fullMode": "true"
-            }
+            "abiFilters": ["arm64-v8a"]
           }
         }
       ]
